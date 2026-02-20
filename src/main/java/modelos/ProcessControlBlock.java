@@ -40,6 +40,7 @@ public class ProcessControlBlock {
     /**
      * Constructor principal del PCB. Inicializa los registros y el contador del deadline.
      * * @param id Identificador único.
+     * @param id
      * @param nombre Nombre descriptivo de la tarea.
      * @param cantidadInstrucciones Total de ciclos/instrucciones a ejecutar.
      * @param prioridad Prioridad estática de planificación.
