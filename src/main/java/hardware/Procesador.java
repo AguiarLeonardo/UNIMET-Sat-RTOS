@@ -102,4 +102,12 @@ public class Procesador {
         }
         return snapshot;
     }
+    
+    /**
+     * Retorna el semáforo de la CPU para interrupciones críticas de hardware.
+     * @return 
+     */
+    public java.util.concurrent.Semaphore getMutex() {
+        return this.cpuMutex;
+    }
 }
