@@ -77,6 +77,13 @@ public class Planificador implements Runnable {
                             if (desalojado.getPc() < desalojado.getCantidadInstrucciones()) {
                                 desalojado.setEstado(ProcessControlBlock.EstadoProceso.LISTO);
                                 colaListos.encolar(desalojado);
+                            } else {
+                                // 1. Marcamos su estado oficial
+                                desalojado.setEstado(ProcessControlBlock.EstadoProceso.TERMINADO);
+                                // 2. Liberamos la RAM para que entren los suspendidos (Swap In)
+                                gestorMemoria.liberarMemoria();
+                                // 3. Le avisamos a la interfaz que sume un éxito
+                                gui.DashboardGUI.registrarProcesoTerminadoGlobal(desalojado);
                             }
                             // Nota: Si terminó, la gestión final se hace en otra etapa (ej. liberar memoria)
                         }
