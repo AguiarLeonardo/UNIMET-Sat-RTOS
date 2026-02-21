@@ -76,6 +76,7 @@ public class ThreadSafeQueue {
     /**
      * Retorna un arreglo estándar de Java con la copia de los elementos actuales.
      * Vital para iterar en la GUI sin lanzar ConcurrentModificationException.
+     * @return 
      */
     public ProcessControlBlock[] obtenerSnapshot() {
         ProcessControlBlock[] snapshot = new ProcessControlBlock[0];
