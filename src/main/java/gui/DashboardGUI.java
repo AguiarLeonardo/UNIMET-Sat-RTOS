@@ -30,6 +30,9 @@ public class DashboardGUI {
     private JSpinner spinDuracionCiclo;
     private JComboBox<String> comboPoliticas;
     private JTextArea txtLogEventos;
+    
+    //Nuevo atributo para la telemetría
+    private PanelTelemetria panelTelemetria;
 
     private final GestorMemoria gestorMemoria;
     private final Procesador cpu;
@@ -59,7 +62,7 @@ public class DashboardGUI {
         ventanaPrincipal.add(panelTop, BorderLayout.NORTH);
 
         JPanel panelCentro = new JPanel(new GridLayout(2, 2, 10, 10));
-        String[] columnas = {"ID", "Nombre", "Estado", "PC", "Prioridad", "Deadline"};
+        String[] columnas = {"ID", "Nombre", "Estado", "PC", "MAR", "Prioridad", "Deadline"};        
         modeloListos = new DefaultTableModel(columnas, 0);
         modeloBloqueados = new DefaultTableModel(columnas, 0);
         modeloListosSuspendidos = new DefaultTableModel(columnas, 0);
@@ -83,6 +86,11 @@ public class DashboardGUI {
         panelCPU.add(lblProcesoCPU, BorderLayout.CENTER);
         panelCPU.setPreferredSize(new Dimension(300, 0));
         ventanaPrincipal.add(panelCPU, BorderLayout.EAST);
+        // Inicializar el panel de telemetría y colocarlo a la izquierda (WEST)
+        panelTelemetria = new PanelTelemetria();
+        panelTelemetria.setPreferredSize(new Dimension(300, 0)); // Darle un ancho fijo
+        ventanaPrincipal.add(panelTelemetria, BorderLayout.WEST);
+       
 
         JPanel panelBottom = new JPanel(new BorderLayout());
         JPanel panelControles = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
@@ -145,10 +153,19 @@ public class DashboardGUI {
         if (datos != null) {
             for (ProcessControlBlock pcb : datos) {
                 if (pcb != null) {
+                    // --- NUEVO BLOQUE VISUAL PARA DEADLINES ---
+                    int tr = pcb.getTiempoRestanteDeadline();
+                    String deadlineVisual = (tr < 0) ? "¡VENCIDO! (" + tr + ")" : tr + " ciclos";
+                    // ------------------------------------------
+
                     modelo.addRow(new Object[]{
-                        pcb.getId(), pcb.getNombre(), pcb.getEstado(),
+                        pcb.getId(), 
+                        pcb.getNombre(), 
+                        pcb.getEstado(),
                         pcb.getPc() + "/" + pcb.getCantidadInstrucciones(),
-                        pcb.getPrioridad(), pcb.getTiempoRestanteDeadline()
+                        pcb.getMar(), 
+                        pcb.getPrioridad(), 
+                        deadlineVisual // <--- Usamos nuestra nueva variable aquí
                     });
                 }
             }
@@ -158,10 +175,24 @@ public class DashboardGUI {
     public void actualizarCPU(ProcessControlBlock enCpu, boolean ejecutandoOS) {
         SwingUtilities.invokeLater(() -> {
             if (enCpu != null) {
-                lblProcesoCPU.setText("<html><center>" + enCpu.getNombre() + "<br>[ID: " + enCpu.getId() + "]<br>PC: " + enCpu.getPc() + "<br>Deadline: " + enCpu.getTiempoRestanteDeadline() + "</center></html>");
+                // --- Lógica Visual de Deadline ---
+                int tr = enCpu.getTiempoRestanteDeadline();
+                // Si es menor a cero, lo ponemos en rojo y dice VENCIDO
+                String deadlineVisual = (tr < 0) ? "<font color='red'><b>¡VENCIDO! (" + tr + ")</b></font>" : tr + " ciclos";
+                
+                // Actualizamos la etiqueta de la CPU agregando también el MAR
+                lblProcesoCPU.setText("<html><center>" + 
+                        enCpu.getNombre() + "<br>" +
+                        "[ID: " + enCpu.getId() + "]<br>" +
+                        "PC: " + enCpu.getPc() + "<br>" +
+                        "MAR: " + enCpu.getMar() + "<br>" +
+                        "Deadline: " + deadlineVisual + 
+                        "</center></html>");
             } else {
                 lblProcesoCPU.setText("IDLE");
             }
+            
+            // Indicador de Modo (Kernel vs Usuario)
             if (ejecutandoOS) {
                 lblIndicadorModo.setText("Modo: SISTEMA OPERATIVO (Kernel)");
                 lblIndicadorModo.setForeground(Color.RED);
@@ -175,22 +206,29 @@ public class DashboardGUI {
     public void configurarListeners(InyectorEventos inyector, Planificador planificador) {
         btnGenerarMasivo.addActionListener(e -> {
             agregarLog("Generando 20 procesos de estrés aleatorios...");
-            for (int i = 0; i < 20; i++) {
-                String id = "P" + ((int) (Math.random() * 9000) + 1000);
-                int inst = (int) (Math.random() * 50) + 10;
-                int prio = (int) (Math.random() * 5) + 1;
-                int dl = (int) (Math.random() * 200) + 50;
-                
-                ProcessControlBlock pcb = new ProcessControlBlock(
-                    id, "Task_RND_" + i, inst, prio, dl, false, 0, 0
-                );
-                inyector.inyectarProcesoAperiodico(pcb);
-            }
-        });
+            
+            new Thread(() -> {
+                for (int i = 0; i < 20; i++) {
+                    String id = "P" + ((int) (Math.random() * 9000) + 1000);
+                    int inst = (int) (Math.random() * 50) + 10;
+                    int prio = (int) (Math.random() * 5) + 1;
+                    int dl = (int) (Math.random() * 200) + 50;
+                    
+                    ProcessControlBlock pcb = new ProcessControlBlock(
+                        id, "Task_RND_" + i, inst, prio, dl, false, 0, 0
+                    );
+                    inyector.inyectarProcesoAperiodico(pcb);
+                }
+            }, "Hilo-Inyector-Masivo").start();
+        });;
 
         btnEmergencia.addActionListener(e -> {
             agregarLog("¡ALERTA! Interrupción detectada: Micro-Meteorito.");
-            inyector.dispararInterrupcionHardware("Micro-Meteorito", 25);
+            
+            // Creamos un hilo mensajero para no bloquear la interfaz (EDT)
+            new Thread(() -> {
+                inyector.dispararInterrupcionHardware("Micro-Meteorito", 25);
+            }, "Hilo-Interrupcion-Hardware").start();
         });
 
         comboPoliticas.addActionListener(e -> {
@@ -228,6 +266,24 @@ public class DashboardGUI {
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(ventanaPrincipal, "Solo números enteros.", "Error", JOptionPane.ERROR_MESSAGE);
             return false;
+        }
+    }
+    
+    public PanelTelemetria getPanelTelemetria() {
+        return panelTelemetria;
+    }
+    
+    public hardware.RelojSistema getReloj() {
+        return reloj;
+    }
+    
+    // Atributo estático temporal para recibir datos del backend
+    private static PanelTelemetria telemetriaGlobal;
+
+    // Agrega este método al final de DashboardGUI
+    public static void registrarProcesoTerminadoGlobal(ProcessControlBlock pcb) {
+        if (telemetriaGlobal != null) {
+            telemetriaGlobal.registrarProcesoTerminado(pcb);
         }
     }
 }
