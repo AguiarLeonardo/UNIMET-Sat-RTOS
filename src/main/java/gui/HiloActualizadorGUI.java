@@ -61,8 +61,17 @@ public class HiloActualizadorGUI extends Thread {
                     ejecutandoOS = true; // Asumimos que prioridad 1 es Tarea del Sistema
                 }
                 guiPrincipal.actualizarCPU(enCpu, ejecutandoOS);
+                
+                // 5. ALIMENTAR LA GRÁFICA DE TELEMETRÍA (NUEVO)
+                PanelTelemetria telemetria = guiPrincipal.getPanelTelemetria();
+                if (telemetria != null) {
+                    int cicloActual = guiPrincipal.getReloj().getCicloGlobal();
+                    // Si hay un proceso en CPU, el uso es 100%. Si está IDLE, es 0%.
+                    double usoCPU = (enCpu != null) ? 100.0 : 0.0; 
+                    telemetria.agregarPuntoUsoCPU(cicloActual, usoCPU);
+                }
 
-                // 5. Esperar hasta el próximo ciclo de refresco
+                // 6. Esperar hasta el próximo ciclo de refresco
                 Thread.sleep(tasaRefrescoMs);
 
             } catch (InterruptedException e) {
