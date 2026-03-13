@@ -4,7 +4,6 @@
  */
 package hardware;
 
-
 import modelos.ProcessControlBlock;
 import java.util.concurrent.Semaphore;
 
@@ -17,15 +16,15 @@ public class Procesador {
     private ProcessControlBlock procesoActual;
     private final java.util.concurrent.Semaphore cpuMutex;
 
-    /**
-     * Constructor que inicializa el semáforo para garantizar exclusión mutua.
-     */
+    // --- NUEVOS ATRIBUTOS PARA LA VENTANA DESLIZANTE DE CPU ---
+    private final int TAMANO_VENTANA = 10;
+    private final int[] historialCPU = new int[TAMANO_VENTANA];
+    private int indiceHistorial = 0;
+
     public Procesador() {
         this.procesoActual = null;
-        // Semáforo instanciado en 1 (comportamiento de Mutex binario)
         this.cpuMutex = new Semaphore(1);
     }
-
     /**
      * Asigna un nuevo proceso a la CPU.
      * Protegido por Semáforo.
@@ -110,4 +109,30 @@ public class Procesador {
     public java.util.concurrent.Semaphore getMutex() {
         return this.cpuMutex;
     }
+    
+    /**
+     * TAREA 2: Registra si la CPU estuvo activa o inactiva en el ciclo actual.
+     */
+    public void registrarEstadoCiclo() {
+        try {
+            cpuMutex.acquire();
+            historialCPU[indiceHistorial] = (this.procesoActual != null) ? 1 : 0;
+            indiceHistorial = (indiceHistorial + 1) % TAMANO_VENTANA;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            cpuMutex.release();
+        }
+    }
+
+    /**
+     * Calcula el promedio de uso de la CPU basado en los últimos 10 ciclos.
+     */
+    public double getUsoCPUPromedio() {
+        int suma = 0;
+        for (int i = 0; i < TAMANO_VENTANA; i++) {
+            suma += historialCPU[i];
+        }
+        return (suma / (double) TAMANO_VENTANA) * 100.0;
+    }     
 }

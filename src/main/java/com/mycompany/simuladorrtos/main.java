@@ -32,7 +32,7 @@ public class main {
         
         // El spinner de la GUI arranca en 1000ms, inicializamos el reloj igual
         RelojSistema reloj = new RelojSistema(1000); 
-        reloj.setProcesador(cpu); // ¡Conexión vital descubierta en tu código!
+        reloj.setProcesador(cpu);
 
         // ---------------------------------------------------------
         // 2. INICIALIZACIÓN DEL SISTEMA OPERATIVO (MOTOR)
@@ -43,6 +43,9 @@ public class main {
         
         InyectorEventos inyector = new InyectorEventos(cpu, gestorMemoria);
 
+        // --- NUEVA CONEXIÓN: El Reloj necesita conocer la memoria para actualizar deadlines ---
+        reloj.setGestorMemoria(gestorMemoria);
+
         // ---------------------------------------------------------
         // 3. INICIALIZACIÓN DE LA INTERFAZ GRÁFICA (GUI)
         // ---------------------------------------------------------
@@ -50,7 +53,10 @@ public class main {
             DashboardGUI ventana = new DashboardGUI(gestorMemoria, cpu, reloj);
             ventana.configurarListeners(inyector, planificador);
             ventana.agregarLog("Boot completo. Sistema Operativo listo y a la espera.");
-             
+            
+            // --- NUEVA CONEXIÓN: El Reloj necesita conocer la GUI para forzar el repintado ---
+            reloj.setDashboard(ventana);
+
             // ---------------------------------------------------------
             // 3.5 GENERACIÓN INICIAL AUTOMÁTICA (REQUISITO PDF)
             // ---------------------------------------------------------

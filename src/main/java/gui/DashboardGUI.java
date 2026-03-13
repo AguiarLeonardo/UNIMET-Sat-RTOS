@@ -90,7 +90,7 @@ public class DashboardGUI {
         panelTelemetria = new PanelTelemetria();
         panelTelemetria.setPreferredSize(new Dimension(300, 0)); // Darle un ancho fijo
         ventanaPrincipal.add(panelTelemetria, BorderLayout.WEST);
-       
+        telemetriaGlobal= panelTelemetria;
 
         JPanel panelBottom = new JPanel(new BorderLayout());
         JPanel panelControles = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
@@ -235,11 +235,11 @@ public class DashboardGUI {
             String seleccion = (String) comboPoliticas.getSelectedItem();
             PoliticaPlanificacion nuevaPolitica = null;
             switch (seleccion) {
-                case "FCFS": nuevaPolitica = new PoliticaFCFS(); break;
-                case "Round Robin": nuevaPolitica = new PoliticaRR(10); break;
-                case "SRT": nuevaPolitica = new PoliticaSRT(); break;
-                case "Prioridad Estática": nuevaPolitica = new PoliticaPrioridadEstatica(); break;
-                case "EDF": nuevaPolitica = new PoliticaEDF(); break;
+                case "FCFS" -> nuevaPolitica = new PoliticaFCFS();
+                case "Round Robin" -> nuevaPolitica = new PoliticaRR(10);
+                case "SRT" -> nuevaPolitica = new PoliticaSRT();
+                case "Prioridad Estática" -> nuevaPolitica = new PoliticaPrioridadEstatica();
+                case "EDF" -> nuevaPolitica = new PoliticaEDF();
             }
             if (nuevaPolitica != null && planificador != null) {
                 planificador.setPolitica(nuevaPolitica);
@@ -284,6 +284,12 @@ public class DashboardGUI {
     public static void registrarProcesoTerminadoGlobal(ProcessControlBlock pcb) {
         if (telemetriaGlobal != null) {
             telemetriaGlobal.registrarProcesoTerminado(pcb);
+        }
+    }
+    // --- NUEVO MÉTODO PARA ACTUALIZAR LA GRÁFICA DESDE EL RELOJ ---
+    public static void agregarPuntoGraficaGlobal(int cicloGlobal, double porcentajeUso) {
+        if (telemetriaGlobal != null) {
+            telemetriaGlobal.agregarPuntoUsoCPU(cicloGlobal, porcentajeUso);
         }
     }
 }

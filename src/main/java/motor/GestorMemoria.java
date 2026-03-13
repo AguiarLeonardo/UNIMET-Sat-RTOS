@@ -16,7 +16,7 @@ import java.util.concurrent.Semaphore;
  */
 public class GestorMemoria {
 
-    // Colas Thread-Safe desarrolladas en el Ticket 1.4
+    // Colas Thread-Safe desarrolladas 
     private final ThreadSafeQueue colaListos;
     private final ThreadSafeQueue colaBloqueados;
     private final ThreadSafeQueue colaListosSuspendidos;

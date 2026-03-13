@@ -4,36 +4,39 @@
  */
 package hardware;
 
-/**
- * Representa el Marcapasos o "Mission Clock" del RTOS.
- * Corre en su propio hilo y dicta el avance del tiempo global.
- */
+import motor.GestorMemoria;
+import estructuras.ThreadSafeQueue;
+import modelos.ProcessControlBlock;
+
 public class RelojSistema implements Runnable {
 
+    // --- Atributos Originales ---
     private int cicloGlobal;
     private volatile int duracionCicloMs;
     private volatile boolean simulacionActiva;
     
-    // Referencia al procesador para notificarle el pulso de reloj
+    // --- Dependencias del Sistema ---
     private Procesador cpu;
+    private GestorMemoria gestorMemoria;
+    private gui.DashboardGUI dashboard;
 
-    /**
-     * Constructor exacto solicitado.
-     * @param duracionInicialMs Duración en ms de cada pulso de reloj.
-     */
     public RelojSistema(int duracionInicialMs) {
         this.cicloGlobal = 0;
         this.duracionCicloMs = duracionInicialMs;
         this.simulacionActiva = false;
     }
 
-    /**
-     * Método adicional para inyectar la dependencia de la CPU sin alterar
-     * el constructor obligatorio del ticket.
-     * @param cpu
-     */
+    // --- Setters para Inyección de Dependencias ---
     public void setProcesador(Procesador cpu) {
         this.cpu = cpu;
+    }
+
+    public void setGestorMemoria(GestorMemoria gestor) {
+        this.gestorMemoria = gestor;
+    }
+
+    public void setDashboard(gui.DashboardGUI dashboard) {
+        this.dashboard = dashboard;
     }
 
     @Override
@@ -44,20 +47,63 @@ public class RelojSistema implements Runnable {
             try {
                 // Suspender el hilo según la velocidad de la simulación
                 Thread.sleep(duracionCicloMs);
-                
-                // Avanzar el tiempo global
                 cicloGlobal++;
                 
-                // Notificar a la CPU para que ejecute una instrucción
+                // 1. Ejecución de la CPU y registro de estado
                 if (cpu != null) {
                     cpu.ejecutarCiclo();
+                    cpu.registrarEstadoCiclo(); // Registra el uso para la gráfica
+                }
+                
+                // 2. Envejecimiento de Deadlines en Memoria
+                actualizarTiemposDelSistema();
+
+                // 3. Enviar punto de Telemetría a la Gráfica
+                if (cpu != null) {
+                    gui.DashboardGUI.agregarPuntoGraficaGlobal(cicloGlobal, cpu.getUsoCPUPromedio());
+                }
+
+                // 4. FORZAR REPINTADO DE LA INTERFAZ
+                if (dashboard != null && gestorMemoria != null) {
+                    // Repintar las tablas sacando snapshots frescos de la memoria
+                    dashboard.actualizarTablas(
+                        gestorMemoria.getCola("LISTOS") != null ? gestorMemoria.getCola("LISTOS").obtenerSnapshot() : null,
+                        gestorMemoria.getCola("BLOQUEADOS") != null ? gestorMemoria.getCola("BLOQUEADOS").obtenerSnapshot() : null,
+                        gestorMemoria.getCola("SUSPENDIDOS") != null ? gestorMemoria.getCola("SUSPENDIDOS").obtenerSnapshot() : null,
+                        gestorMemoria.getCola("BLOQUEADOS_SUSPENDIDOS") != null ? gestorMemoria.getCola("BLOQUEADOS_SUSPENDIDOS").obtenerSnapshot() : null
+                    );
+                    
+                    // Repintar el panel de la CPU (false indica Modo Usuario por defecto)
+                    dashboard.actualizarCPU(cpu.getProcesoActualSeguro(), false);
                 }
                 
             } catch (InterruptedException e) {
-                // Manejo adecuado de la interrupción: restaurar la bandera de interrupción y detener
                 Thread.currentThread().interrupt();
                 this.simulacionActiva = false;
                 System.err.println("El Reloj del Sistema fue interrumpido críticamente.");
+            }
+        }
+    }
+
+    /**
+     * Envejece los deadlines de todos los procesos que están esperando en colas.
+     */
+    private void actualizarTiemposDelSistema() {
+        if (gestorMemoria == null) return;
+
+        // Actualizar Listos (RAM)
+        ThreadSafeQueue colaListos = gestorMemoria.getCola("LISTOS");
+        if (colaListos != null) {
+            for (ProcessControlBlock pcb : colaListos.obtenerSnapshot()) {
+                if (pcb != null) pcb.reducirDeadline(); 
+            }
+        }
+
+        // Actualizar Suspendidos (Disco)
+        ThreadSafeQueue colaSusp = gestorMemoria.getCola("SUSPENDIDOS");
+        if (colaSusp != null) {
+            for (ProcessControlBlock pcb : colaSusp.obtenerSnapshot()) {
+                if (pcb != null) pcb.reducirDeadline();
             }
         }
     }

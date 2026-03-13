@@ -60,8 +60,12 @@ public class Planificador implements Runnable {
                 boolean debeDesalojar = false;
 
                 if (enCpu == null) {
-                    debeDesalojar = true; // CPU libre
+                    debeDesalojar = true; // La CPU está libre, hay que meter a alguien
+                } else if (enCpu.getPc() >= enCpu.getCantidadInstrucciones()) {
+                    
+                    debeDesalojar = true; 
                 } else {
+                    
                     debeDesalojar = politicaActual.requiereDesalojo(enCpu, colaListos);
                 }
 

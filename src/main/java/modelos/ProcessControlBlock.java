@@ -187,4 +187,10 @@ public class ProcessControlBlock {
     public void setCiclosParaSatisfacerIO(int ciclosParaSatisfacerIO) {
         this.ciclosParaSatisfacerIO = ciclosParaSatisfacerIO;
     }
+    public void reducirDeadline() {
+        // Por lo que vi en tu interfaz, el método que usas para leerlo se llama getTiempoRestanteDeadline()
+        // Así que tu variable interna debería llamarse tiempoRestanteDeadline.
+        // Si se llama diferente (ej. solo 'deadline'), ajusta el nombre aquí:
+        this.tiempoRestanteDeadline--; 
+    }
 }
